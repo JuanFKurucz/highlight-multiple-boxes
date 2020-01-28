@@ -1,0 +1,16 @@
+html{
+  overflow:hidden;
+}
+.fly{
+  position:absolute;
+  width:100px;
+  height:100px;
+  color:black;
+  font-size:21px;
+  font-weight: bold;
+  text-align: center;
+  display: grid;
+}
+.fly span{
+  margin:auto;
+}
