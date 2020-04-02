@@ -1,30 +1,22 @@
-var height = window.innerHeight;
-var width = window.innerWidth;
+var HEIGHT = window.innerHeight;
+var WIDTH = window.innerWidth;
 
-function createBg(left, top, width, height, tag = "left") {
+function createBg(left, top, width, height, tag, parent) {
+  if (width == 0 || height == 0) {
+    return;
+  }
   var bg = document.createElement("div");
   bg.style.position = "absolute";
   bg.style.zIndex = "1100";
   bg.style.background = "rgba(0,0,0,0.4)";
   bg.style.top = top + "px";
   bg.style.left = left + "px";
-  console.log(left, top, width, height);
-  if (window.innerWidth - left >= width - left) {
-    bg.style.width = width - left + "px";
-  } else {
-    bg.style.width = window.innerWidth - left + "px";
-  }
-  if (window.innerHeight - top >= height - top) {
-    bg.style.height = height - top + "px";
-  } else {
-    bg.style.height = window.innerHeight - top + "px";
-  }
-  // /bg.style.border="1px solid";
+  bg.style.width = Math.abs(width) + "px";
+  bg.style.height = Math.abs(height) + "px";
   bg.setAttribute("class", tag);
+  bg.setAttribute("owner", parent);
   document.body.appendChild(bg);
 }
-var height = window.innerHeight;
-var width = window.innerWidth;
 
 function randomFly(x, y) {
   var sq = document.createElement("div");
@@ -33,136 +25,194 @@ function randomFly(x, y) {
     "<span>" + document.querySelectorAll(".fly").length + "</span>";
   sq.style.top = y + "px";
   sq.style.left = x + "px";
+  sq.style.backgroundColor =
+    "rgba(" +
+    Math.floor(Math.random() * 255) +
+    "," +
+    Math.floor(Math.random() * 255) +
+    "," +
+    Math.floor(Math.random() * 255) +
+    ",0.3)";
   document.body.appendChild(sq);
 }
 
-function searchBoxV2(boxesCordsY, eX, eY) {
-  for (var b = 0; b < boxesCordsY.length; b++) {
-    var anterior = 0;
-    var siguiente = eY;
-    if (b - 1 >= 0) {
-      anterior = boxesCordsY[b - 1].bottom;
-    }
-    siguiente = boxesCordsY[b].top;
-    console.log(anterior, siguiente);
-    console.log("e");
-    createBg(0, anterior, eX, siguiente);
-    //izq
-    var maxedYL = 0;
-    var maxedYR = 0;
-    for (var bn = 0; bn < boxesCordsY.length; bn++) {
-      if (bn != b) {
-        if (
-          boxesCordsY[bn].right < boxesCordsY[b].x &&
-          ((boxesCordsY[bn].bottom > boxesCordsY[b].y &&
-            boxesCordsY[bn].bottom < boxesCordsY[b].bottom) ||
-            (boxesCordsY[bn].y < boxesCordsY[b].bottom &&
-              boxesCordsY[bn].y > boxesCordsY[b].y))
-        ) {
-          maxedYL = boxesCordsY[bn].bottom;
-          if (
-            boxesCordsY[bn].y < boxesCordsY[b].bottom &&
-            boxesCordsY[bn].y > boxesCordsY[b].y
-          ) {
-            createBg(
-              0,
-              boxesCordsY[b].top,
-              boxesCordsY[b].left,
-              boxesCordsY[bn].top
-            );
-          } else {
-            createBg(
-              boxesCordsY[bn].right,
-              boxesCordsY[b].top,
-              boxesCordsY[b].left,
-              boxesCordsY[bn].bottom
-            );
-          }
+function collision(rect1, rect2) {
+  return (
+    rect1.x < rect2.x + rect2.width &&
+    rect1.x + rect1.width > rect2.x &&
+    rect1.y < rect2.y + rect2.height &&
+    rect1.y + rect1.height > rect2.y
+  );
+}
+
+function createArea(x, y, width, height) {
+  return { x, y, width, height };
+}
+
+function searchAndCreate(areas, cords, depth = 0) {
+  let collide = false;
+  loop1: for (let a in areas) {
+    const area = areas[a];
+    loop2: for (let c in cords) {
+      const cord = cords[c];
+      if (collision(area, cord)) {
+        collide = true;
+        if (area.y + area.height > cord.y) {
+          console.log(area);
+          area.height = area.y - cord.y;
+          console.log(area);
         } else if (
-          boxesCordsY[bn].x > boxesCordsY[b].right &&
-          ((boxesCordsY[bn].bottom > boxesCordsY[b].y &&
-            boxesCordsY[bn].bottom < boxesCordsY[b].bottom) ||
-            (boxesCordsY[bn].y < boxesCordsY[b].bottom &&
-              boxesCordsY[bn].y > boxesCordsY[b].y))
+          area.x + area.width > cord.x &&
+          area.y < cord.y + cord.height &&
+          area.y + area.height > cord.y
         ) {
-          maxedYR = boxesCordsY[bn].bottom;
-          if (
-            boxesCordsY[bn].y < boxesCordsY[b].bottom &&
-            boxesCordsY[bn].y > boxesCordsY[b].y
-          ) {
-            createBg(
-              boxesCordsY[b].right,
-              boxesCordsY[b].top,
-              eX,
-              boxesCordsY[bn].top,
-              "right"
-            );
-          } else {
-            createBg(
-              boxesCordsY[b].right,
-              boxesCordsY[b].top,
-              boxesCordsY[bn].left,
-              boxesCordsY[bn].bottom,
-              "right"
-            );
-          }
+          console.log("hi");
+          area.width = cord.x;
+        } else if (
+          area.x < cord.x + cord.width &&
+          area.y < cord.y + cord.height &&
+          area.y + area.height > cord.y
+        ) {
+          area.width = cord.x;
         }
+        areas.push(createArea(area.x, cord.y, cord.x, cord.height));
+        areas.push(
+          createArea(
+            cord.x + cord.width,
+            cord.y,
+            WIDTH - cord.x - cord.width,
+            cord.height
+          )
+        );
+        areas.push(
+          createArea(
+            area.x,
+            cord.y + cord.height,
+            WIDTH,
+            HEIGHT - cord.y - cord.height
+          )
+        );
+        break loop1;
       }
     }
-    if (maxedYL == 0) {
-      createBg(
-        0,
-        boxesCordsY[b].top,
-        boxesCordsY[b].left,
-        boxesCordsY[b].bottom
-      );
-    } else if (maxedYL < boxesCordsY[b].bottom) {
-      createBg(0, maxedYL, boxesCordsY[b].left, boxesCordsY[b].bottom);
-    }
-    if (maxedYR == 0) {
-      createBg(
-        boxesCordsY[b].right,
-        boxesCordsY[b].top,
-        eX,
-        boxesCordsY[b].bottom,
-        "right"
-      );
-    } else if (maxedYR < boxesCordsY[b].bottom) {
-      createBg(
-        boxesCordsY[b].right,
-        maxedYR,
-        eX,
-        boxesCordsY[b].bottom,
-        "right"
-      );
-    }
   }
-  createBg(0, boxesCordsY[boxesCordsY.length - 1].bottom, eX, eY);
+  if (collide && depth < 1) {
+    return searchAndCreate(areas, cords, depth + 1);
+  }
+  return areas;
+}
+
+function searchBoxV2(cords, maxX, maxY) {
+  cords.sort((a, b) => (a.y > b.y ? 1 : -1)); //up to down order
+  const bigArea = {
+    x: 0,
+    y: 0,
+    width: WIDTH,
+    height: HEIGHT
+  };
+  const result = searchAndCreate([bigArea], cords);
+  for (let r in result) {
+    const box = result[r];
+    createBg(box.x, box.y, box.width, box.height);
+  }
+}
+
+function createBox(list, data) {
+  const object = {
+    ...data
+  };
+  object.id = list.length;
+  object.top = data.y;
+  object.left = data.x;
+  object.right = data.x + data.width;
+  object.bottom = data.y + data.height;
+  return object;
 }
 
 function generateBg() {
   var boxes = document.querySelectorAll(".fly");
-  var boxesCordsX = [];
   var boxesCordsY = [];
   for (var b = 0; b < boxes.length; b++) {
     var o = boxes[b].getBoundingClientRect();
-    o.id = b;
-    boxesCordsX.push(o);
     boxesCordsY.push(o);
   }
   boxesCordsY.sort(function(a, b) {
     return a.y - b.y;
   });
-  //searchBox(boxesCords,0,0,0,0,width,height);
-  searchBoxV2(boxesCordsY, width, height);
+  console.log(boxesCordsY);
+  const cleanedBoxes = [];
+  const skipBoxes = [];
+  for (let b1 = 0; b1 < boxesCordsY.length; b1++) {
+    let didBreak = false;
+    for (let b2 = 0; b2 < boxesCordsY.length; b2++) {
+      if (
+        b1 !== b2 &&
+        skipBoxes.indexOf(b1 + "." + b2) === -1 &&
+        skipBoxes.indexOf(b2 + "." + b1) === -1
+      ) {
+        if (
+          boxesCordsY[b1].x < boxesCordsY[b2].x + boxesCordsY[b2].width &&
+          boxesCordsY[b1].x + boxesCordsY[b1].width > boxesCordsY[b2].x &&
+          boxesCordsY[b1].y < boxesCordsY[b2].y + boxesCordsY[b2].height &&
+          boxesCordsY[b1].height + boxesCordsY[b1].y > boxesCordsY[b2].y
+        ) {
+          const minX =
+            boxesCordsY[b1].x < boxesCordsY[b2].x
+              ? boxesCordsY[b1].x
+              : boxesCordsY[b2].x;
+          const minY =
+            boxesCordsY[b1].y < boxesCordsY[b2].y
+              ? boxesCordsY[b1].y
+              : boxesCordsY[b2].y;
+          const maxX =
+            boxesCordsY[b1].x + boxesCordsY[b1].width >
+            boxesCordsY[b2].x + boxesCordsY[b2].width
+              ? boxesCordsY[b1].x + boxesCordsY[b1].width
+              : boxesCordsY[b2].x + boxesCordsY[b2].width;
+          console.log(maxX);
+          const maxY =
+            boxesCordsY[b1].y + boxesCordsY[b1].height >
+            boxesCordsY[b2].y + boxesCordsY[b2].height
+              ? boxesCordsY[b1].y + boxesCordsY[b1].height
+              : boxesCordsY[b2].y + boxesCordsY[b2].height;
+
+          cleanedBoxes.push(
+            createBox(cleanedBoxes, {
+              x: minX,
+              y: minY,
+              width: maxX - minX,
+              height: maxY - minY
+            })
+          );
+          skipBoxes.push(b1 + "." + b2);
+          didBreak = true;
+          break;
+        }
+      }
+      if (
+        skipBoxes.indexOf(b1 + "." + b2) !== -1 ||
+        skipBoxes.indexOf(b2 + "." + b1) !== -1
+      ) {
+        didBreak = true;
+        break;
+      }
+    }
+    if (!didBreak) {
+      cleanedBoxes.push(boxesCordsY[b1]);
+    }
+  }
+  for (var b = 0; b < cleanedBoxes.length; b++) {
+    cleanedBoxes[b].id = b + 1;
+  }
+  searchBoxV2(cleanedBoxes, WIDTH, HEIGHT);
 }
 
 window.onload = function() {
   if (document.querySelectorAll(".fly").length === 0) {
-    for (var i = 0; i < 2; i++) {
+    for (var i = 0; i < 3; i++) {
       randomFly(
-        Math.floor(Math.random() * (width - 100) + 1),
-        Math.floor(Math.random() * (height - 100) + 1)
+        Math.floor(Math.random() * (WIDTH - 100) + 1),
+        Math.floor(Math.random() * (HEIGHT - 100) + 1)
       );
     }
   }
