@@ -108,7 +108,7 @@ function searchAndCreate(cords, maxWidth, maxHeight) {
     }
     if (!broke) areas.push({ ...lines[l], lastY: lines[l].y });
   }
-  return lines;
+  return areas;
 }
 
 function generateBg(width = null, height = null) {
