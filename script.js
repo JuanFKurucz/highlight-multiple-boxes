@@ -5,7 +5,7 @@ function createBg(left, top, width, height, tag, parent) {
   var bg = document.createElement("div");
   bg.style.position = "absolute";
   bg.style.zIndex = "1100";
-  bg.style.background = "rgba(0,0,0,0.4)";
+  bg.style.background = "rgba(0,0,0,0.5)";
   bg.style.top = top + "px";
   bg.style.left = left + "px";
   bg.style.width = Math.abs(width) + "px";
@@ -23,11 +23,11 @@ function randomFly(x, y) {
   sq.style.left = x + "px";
   sq.style.backgroundColor =
     "rgba(" +
-    Math.floor(Math.random() * 255) +
+    Math.floor(Math.random() * 200 + 100) +
     "," +
-    Math.floor(Math.random() * 255) +
+    Math.floor(Math.random() * 200 + 100) +
     "," +
-    Math.floor(Math.random() * 255) +
+    Math.floor(Math.random() * 200 + 100) +
     ",0.3)";
   document.body.appendChild(sq);
 }
@@ -41,43 +41,56 @@ function collision(rect1, rect2) {
   );
 }
 
-function loopX(cords, line, endX) {
-  let x;
-  for (x = line.x; x < endX; x++) {
-    const tempLine = { ...line };
-    tempLine.width = x - line.x;
-    for (let c in cords) {
-      if (collision(cords[c], tempLine)) {
-        x -= 1;
-        return { collided: true, x: x, cord: cords[c] };
-      }
+function loopX(cords, line, maxWidth) {
+  let x = 0;
+  const cuts = [];
+
+  for (let c in cords) {
+    if (line.y >= cords[c].y && line.y < cords[c].y + cords[c].height) {
+      cuts.push({
+        x: x,
+        width: cords[c].x - x,
+        y: line.y,
+        height: 1,
+      });
+      x = cords[c].x + cords[c].width;
     }
   }
-  return { collided: false, x: x, cord: null };
+  cuts.push({
+    x: x,
+    width: Math.abs(maxWidth - x),
+    height: 1,
+    y: line.y,
+  });
+  const finalCuts = [];
+  for (let c in cuts) {
+    if (cuts[c].width <= 0) {
+      continue;
+    }
+    let collide = false;
+    for (let cord in cords) {
+      collide = collision(cuts[c], cords[cord]);
+      if (collide) break;
+    }
+    if (!collide) {
+      finalCuts.push(cuts[c]);
+    }
+  }
+  return finalCuts;
 }
 
 function searchAndCreate(cords, maxWidth, maxHeight) {
-  const baseLine = { x: 0, y: 0, width: 0, height: 0 };
-  const lines = [];
-  loopy: for (let y = 0; y < maxHeight; y++) {
+  const baseLine = { x: 0, y: 0, width: maxWidth, height: 1 };
+  let lines = [];
+  cords.sort(function (a, b) {
+    return a.x - b.x;
+  });
+  for (let y = 0; y < maxHeight; y++) {
     const line = { ...baseLine };
     line.y = y;
-    let result = {
-      collided: true,
-      x: 0,
-    };
-    while (result.collided) {
-      result = loopX(cords, line, maxWidth);
-      if (result.x - line.x > 0) {
-        lines.push({ x: line.x, y: y, width: result.x - line.x, height: 1 });
-      }
-      if (result.cord) {
-        line.x = result.cord.x + result.cord.width;
-        line.width = 1;
-      }
-    }
+    const cuts = loopX(cords, line, maxWidth);
+    lines = lines.concat(cuts);
   }
-
   const areas = [];
   for (let l = 0; l < lines.length; l++) {
     let broke = false;
@@ -95,7 +108,7 @@ function searchAndCreate(cords, maxWidth, maxHeight) {
     }
     if (!broke) areas.push({ ...lines[l], lastY: lines[l].y });
   }
-  return areas;
+  return lines;
 }
 
 function generateBg(width = null, height = null) {
@@ -123,7 +136,7 @@ window.onload = function () {
   const width = window.innerWidth;
   const height = window.innerHeight;
   if (document.querySelectorAll(".fly").length === 0) {
-    for (var i = 0; i < 10; i++) {
+    for (var i = 0; i < 200; i++) {
       randomFly(
         Math.floor(Math.random() * (width - 100) + 1),
         Math.floor(Math.random() * (height - 100) + 1)
